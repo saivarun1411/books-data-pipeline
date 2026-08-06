@@ -4,6 +4,7 @@ print(os.getcwd())
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+from pathlib import Path
 
 url = "https://books.toscrape.com/"
 
@@ -36,11 +37,18 @@ for book in books:
 print(books_data)
 
 df=pd.DataFrame(books_data)
-print(df)
-#df.to_csv("../data/books.csv", index=False)
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-print("CSV Saved Successfully!")
+data_folder = BASE_DIR / "data"
 
+data_folder.mkdir(exist_ok=True)
+
+output_file = data_folder / "books.csv"
+
+df.to_csv(output_file, index=False)
+
+print("\nCSV Saved Successfully!")
+print(f"Location : {output_file}")
 
 
 
