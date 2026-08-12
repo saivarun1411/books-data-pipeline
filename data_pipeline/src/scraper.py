@@ -1,6 +1,4 @@
 import os
-
-print(os.getcwd())
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
@@ -8,9 +6,14 @@ from pathlib import Path
 from urllib.parse import urljoin
 
 
+print(os.getcwd())
 
 books_data = []
 
+# Required fixed conversion rate
+GBP_TO_INR = 105.50
+
+# Scrape first 5 catalogue pages = 100 books
 for page in range(1, 6):
 
     if page == 1:
@@ -20,7 +23,7 @@ for page in range(1, 6):
 
     print(f"Scraping Page {page}...")
 
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
 
     if response.status_code != 200:
         print(f"Failed to fetch Page {page}")
@@ -32,67 +35,124 @@ for page in range(1, 6):
 
     print(f"Books Found: {len(books)}")
 
-
     for book in books:
 
         title = book.h3.a["title"]
 
         book_link = book.h3.a["href"]
 
-        print(f"\nProcessing: {title}")
-
         book_url = urljoin(url, book_link)
 
-        print("Book URL:", book_url)
+        print(f"Processing: {title}")
 
+        # Fetch individual book page for category
         book_response = requests.get(book_url, timeout=10)
+
+        if book_response.status_code != 200:
+            print(f"Failed to fetch book page: {title}")
+            continue
+
         book_soup = BeautifulSoup(book_response.text, "html.parser")
-        
-
-        
-        
-
-        print("Book page downloaded")
-
-        
 
         breadcrumb = book_soup.find("ul", class_="breadcrumb")
-        category = breadcrumb.find_all("li")[2].text.strip()
 
-        print("Category:", category)
+        try:
+            category = breadcrumb.find_all("li")[2].text.strip()
+        except (AttributeError, IndexError):
+            print(f"Category parsing failed: {title}")
+            continue
 
-        price = book.find("p", class_="price_color").text.strip()
-        price=price.replace("Â£", "").replace("£", "")
-        price = float(price)
+        # -----------------------------
+        # PRICE
+        # -----------------------------
 
-        rating_text = book.find("p", class_="star-rating")["class"][1]
+        price_text = book.find(
+            "p",
+            class_="price_color"
+        ).text.strip()
+
+        try:
+            price_gbp = float(
+                price_text.replace("Â£", "").replace("£", "")
+            )
+        except ValueError:
+            print(f"Price parsing failed: {title}")
+            continue
+
+        # -----------------------------
+        # RATING
+        # -----------------------------
+
+        rating_text = book.find(
+            "p",
+            class_="star-rating"
+        )["class"][1]
+
         rating_map = {
-            "One":1,
-            "Two":2,
-            "Three":3,
-            "Four":4,
-            "Five":5
+            "One": 1,
+            "Two": 2,
+            "Three": 3,
+            "Four": 4,
+            "Five": 5
         }
 
-        rating = rating_map[rating_text]
+        try:
+            rating = rating_map[rating_text]
+        except KeyError:
+            print(f"Rating parsing failed: {title}")
+            continue
 
-        availability = book.find("p", class_="instock availability").text.strip()
+        # -----------------------------
+        # AVAILABILITY
+        # -----------------------------
+
+        availability = book.find(
+            "p",
+            class_="instock availability"
+        ).text.strip()
+
+        in_stock = availability.lower().startswith("in stock")
+
+        # -----------------------------
+        # GBP → INR
+        # -----------------------------
+
+        price_inr = round(price_gbp * GBP_TO_INR, 2)
+
+        # -----------------------------
+        # STORE RECORD
+        # -----------------------------
 
         book_data = {
             "title": title,
-            "price": price,
+            "price_gbp": price_gbp,
+            "price_inr": price_inr,
             "rating": rating,
-            "availability": availability,
+            "in_stock": in_stock,
             "category": category
         }
 
         books_data.append(book_data)
-print(f"Completed Page {page}")
 
-df=pd.DataFrame(books_data)
+    print(f"Completed Page {page}")
+
+
+# -----------------------------
+# CREATE DATAFRAME
+# -----------------------------
+
+df = pd.DataFrame(books_data)
 
 print(f"\nTotal Books Scraped: {len(books_data)}")
 print(f"Total Rows in DataFrame: {len(df)}")
+
+print("\nData Types:")
+print(df.dtypes)
+
+
+# -----------------------------
+# SAVE CSV
+# -----------------------------
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -106,8 +166,3 @@ df.to_csv(output_file, index=False)
 
 print("\nCSV Saved Successfully!")
 print(f"Location : {output_file}")
-
-
-
-
- 
