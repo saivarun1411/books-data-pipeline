@@ -169,3 +169,28 @@ Best parameters:
 max_depth = 10
 max_features = sqrt
 n_estimators = 100
+
+
+
+## Regression Analysis
+
+Two regression models were evaluated for predicting fare: Linear Regression and Ridge Regression.
+
+| Model | MAE | RMSE | R² | Adjusted R² |
+|---|---:|---:|---:|---:|
+| Linear Regression | 20.6867 | 42.5706 | 0.3207 | 0.3050 |
+| Ridge Regression | 20.6647 | 42.5697 | 0.3208 | 0.3051 |
+
+Ridge Regression performed slightly better than Linear Regression, with marginally lower MAE and RMSE and slightly higher R² and Adjusted R². The residual analysis was also reviewed for heteroscedasticity.
+
+## Final Model Recommendation
+
+Class-weighted Logistic Regression is the recommended classifier for deployment. It achieved the highest accuracy of 83.15%, recall of 77.94%, and F1 score of 77.94% among the imbalance-handling approaches, providing a better balance between overall accuracy and minority-class detection. Baseline Logistic Regression achieved the highest ROC-AUC of 86.86%, showing strong overall discrimination, but its recall was lower at 69.12%. Therefore, class-weighted Logistic Regression is preferred when balanced classification performance and improved detection of survivors are prioritized.
+
+## Pipeline Persistence
+
+The complete preprocessing and classification pipeline was saved as:
+
+`titanic_final_pipeline.joblib`
+
+The saved pipeline was successfully reloaded using `joblib.load()` and tested on raw input data. The reloaded pipeline produced predictions successfully, confirming that the complete preprocessing and model workflow can be reused on new raw data.
